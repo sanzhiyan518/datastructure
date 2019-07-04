@@ -1,0 +1,15 @@
+# depslib dependency file v1.0
+1529464148 source:d:\study\datastructure\clist\clist.c
+	<stdio.h>
+	<stdlib.h>
+	"clist.h"
+
+1529480921 d:\study\datastructure\clist\clist.h
+
+1529717019 source:d:\study\datastructure\clist\clist_asm.s
+
+1562223854 source:d:\study\datastructure\clist\main.c
+	<stdio.h>
+	<time.h>
+	"clist.h"
+
