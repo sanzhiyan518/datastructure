@@ -1,0 +1,15 @@
+# depslib dependency file v1.0
+1562223165 source:d:\study\datastructure\dlist\dlist.c
+	<stdlib.h>
+	<stdio.h>
+	"dlist.h"
+
+1529367929 d:\study\datastructure\dlist\dlist.h
+
+1529368871 source:d:\study\datastructure\dlist\dlist_asm.s
+
+1562223197 source:d:\study\datastructure\dlist\main.c
+	<stdio.h>
+	<time.h>
+	"dlist.h"
+
