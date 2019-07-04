@@ -1,0 +1,16 @@
+# depslib dependency file v1.0
+1529974366 source:d:\study\datastructure\queue\main.c
+	"queue.h"
+	<stdio.h>
+	<time.h>
+
+1529971257 d:\study\datastructure\queue\queue.h
+
+1529926705 source:d:\study\datastructure\queue\queue_asm.s
+
+1529974269 source:d:\study\datastructure\queue\queuelist_asm.s
+
+1529971435 source:d:\study\datastructure\queue\ququelist.c
+	"queue.h"
+	<stdlib.h>
+
