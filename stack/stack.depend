@@ -1,0 +1,24 @@
+# depslib dependency file v1.0
+1562224550 source:d:\study\datastructure\stack\main.c
+	<stdio.h>
+	"stack.h"
+	"stack_list.h"
+	<time.h>
+
+1529724196 d:\study\datastructure\stack\stack.h
+
+1529736551 d:\study\datastructure\stack\stack_list.h
+
+1529732752 source:d:\study\datastructure\stack\stack.c
+	"stack.h"
+	<stdio.h>
+	<stdlib.h>
+
+1529733444 source:d:\study\datastructure\stack\stack_asm.s
+
+1529736761 source:d:\study\datastructure\stack\stacklist.c
+	<stdlib.h>
+	"stack_list.h"
+
+1529888812 source:d:\study\datastructure\stack\stacklist_asm.s
+
