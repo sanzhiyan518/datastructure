@@ -1,6 +1,6 @@
 # 单链表
 
-<img src="imgs/sline.png" />
+<img src="https://github.com/sanzhiyan518/datastructure/blob/master/imgs/sline.png" />
 
 ## 单链表特征
 
