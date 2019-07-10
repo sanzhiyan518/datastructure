@@ -31,6 +31,14 @@
 		<Compiler>
 			<Add option="-Wall" />
 		</Compiler>
+		<Unit filename="dlist.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="dlist.h" />
+		<Unit filename="dlist_asm.s" />
+		<Unit filename="main.c">
+			<Option compilerVar="CC" />
+		</Unit>
 		<Extensions>
 			<code_completion />
 			<envvars />

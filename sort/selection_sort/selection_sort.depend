@@ -1,0 +1,17 @@
+# depslib dependency file v1.0
+1562382039 source:d:\study\datastructure\sort\selection_sort\main.c
+	"selection_sort.h"
+	<stdio.h>
+	<time.h>
+	<stdlib.h>
+
+1562382007 d:\study\datastructure\sort\selection_sort\selection_sort.h
+
+1562382015 source:d:\study\datastructure\sort\selection_sort\selection_sort.c
+	"selection_sort.h"
+	<help.h>
+
+1526391765 d:\study\datastructure\sort\\help.h
+
+1525503302 source:d:\study\datastructure\sort\selection_sort\selection_sort_asm.s
+

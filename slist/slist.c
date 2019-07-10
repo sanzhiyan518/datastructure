@@ -1,95 +1,108 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 #include "slist.h"
 
-//¹¹½¨Á´±í
-List * list_init(compare compare) {
-    List * list = (List *)malloc(sizeof(*list));
-    list->length = 0;
-    list->head = list->tail = NULL;
-    list->compare = compare;
-    return list;
+//é“¾è¡¨åˆå§‹åŒ–
+void list_init(List * list, destroy destroy) {
+    list->size = 0;
+    list->match = NULL;
+    list->destroy = destroy;
+    list->head = NULL;
+    list->tail = NULL;
 }
 
-//Ïú»ÙÁ´±í
+//é”€æ¯é“¾è¡¨
 void list_destroy(List * list) {
-    ListElement * element;
-
-    if(list == NULL)
-        return;
-
-    element = list_head(list);
+    ListElement * prev, * element = list_head(list);
+    destroy destroy = list->destroy;
 
     while (element != NULL) {
-        ListElement * tmp = element;
-        element = list_next(element);
-        free(tmp);
+        //ä¿å­˜å½“å‰é“¾è¡¨å…ƒç´ ç”¨äºŽè¯¥å…ƒç´ åŠå…¶æ•°æ®æˆå‘˜çš„åˆ é™¤æ“ä½œ
+        prev = element;
+        element = element->next;
+        //æ•°æ®æˆå‘˜çš„åˆ é™¤æ“ä½œ
+        if(destroy != NULL)
+            destroy(prev->data);
+
+        free(prev);
     }
 
-    free(list);
+    memset(list, 0, sizeof(List));
 }
 
-//²åÈë²Ù×÷£¬¹¹½¨ÐÂµÄÁ´±íÔªËØ£¬²¢½«´ËÁ´±íÔªËØ²åÈëµ½´«ÈëÁ´±íÔªËØ²ÎÊýÖ®ºó£¬¿ÉÒÔÎª¿Õ
-void list_insert(List * list, ListElement *prev, void * data) {
-    //ÐÂÁ´±íÔªËØ
-    ListElement * element = (ListElement *)malloc(sizeof(*element));
+//æ’å…¥æ“ä½œ
+int list_ins_next(List * list, ListElement * prev, void * data) {
+    //æ–°é“¾è¡¨å…ƒç´ 
+    ListElement * element = (ListElement *)malloc(sizeof(ListElement));
+
+    if(element == NULL)
+        return -1;
+
     element->next = NULL;
     element->data = data;
 
-    //Èô´«ÈëÇ°Ò»¸öÁ´±íÔªËØ
     if(prev) {
-        //ÅÐ¶ÏÊÇ·ñÎªÁ´±íÎ²,Á´±íÎ²ÔòÐÞ¸ÄÐÂÁ´±íÔªËØÎªÁ´±íÎ²ÔªËØ
-        if(list_is_tail(prev))
+        //åˆ¤æ–­æ˜¯å¦ä¸ºé“¾è¡¨å°¾,é“¾è¡¨å°¾åˆ™ä¿®æ”¹æ–°é“¾è¡¨å…ƒç´ ä¸ºé“¾è¡¨å°¾å…ƒç´ 
+        if(list_is_tail(list, prev))
             list->tail = element;
-        //¼ÓÈëÁ´±í
+
+        //åŠ å…¥é“¾è¡¨
         element->next = prev->next;
         prev->next = element;
     } else {
-        //Á´±íÎª¿ÕÔòÐÂÁ´±íÔªËØÒ²Í¬Ê±ÎªÎ²
-        if(list_length(list) == 0)
+        //é“¾è¡¨ä¸ºç©ºåˆ™æ–°é“¾è¡¨å…ƒç´ ä¹ŸåŒæ—¶ä¸ºå°¾
+        if(list_size(list) == 0)
             list->tail = element;
-        //¼ÓÈëµ½Á´±í£¬³ÉÎªÍ·
+
+        //åŠ å…¥åˆ°é“¾è¡¨ï¼Œæˆä¸ºå¤´
         element->next = list->head;
         list->head = element;
     }
-    //Á´±íÔªËØÔö1
-    list->length++;
+
+    list->size++;
+
+    return 0;
 }
 
-//¸ù¾Ý´«ÈëÎÀÐÇÊý¾Ý£¬ËÑË÷Á´±íÔªËØ
-ListElement * list_search(List * list, void * data) {
+
+//åˆ é™¤æ“ä½œ
+int list_rem_next(List * list, ListElement * prev, void ** data) {
     ListElement * element;
 
-    for_each(element, list) {
-        if(list->compare(element->data, data))
-            break;
+    if(list_size(list) == 0)
+        return -1;
+
+    if(prev) {
+        //åˆ¤æ–­ä¼ å…¥é“¾è¡¨å…ƒç´ æ˜¯å¦ä¸ºé“¾è¡¨å°¾ï¼Œä¸ºå°¾åˆ™æ— åˆ é™¤å…ƒç´ 
+        if(list_is_tail(list, prev))
+            return -1;
+
+        //èŽ·å–åˆ é™¤é“¾è¡¨å…ƒç´ 
+        element = prev->next;
+
+        //è‹¥åˆ é™¤å…ƒç´ ä¸ºé“¾è¡¨å°¾ï¼Œä¿®æ”¹é“¾è¡¨å°¾ä¸ºä¼ å…¥é“¾è¡¨å…ƒç´ 
+        if(list_is_tail(list, element))
+            list->tail = prev;
+
+        //ä¿®æ”¹é“¾æŽ¥å…³ç³»
+        prev->next = element->next;
+    } else {
+        //ä¼ å…¥é“¾è¡¨å…ƒç´ ä¸ºç©ºè¡¨æ˜Žè¦åˆ é™¤é“¾è¡¨å¤´å…ƒç´ 
+        element = list->head;
+
+        //å¦‚æžœé“¾è¡¨åªæœ‰ä¸€ä¸ªå…ƒç´ ï¼Œåˆ™éœ€è¦ä¿®æ”¹é“¾è¡¨å°¾ä¸ºç©º
+        if(list_is_tail(list, element))
+            list->tail = NULL;
+
+        //ä¿®æ”¹é“¾æŽ¥å…³ç³»
+        list->head = element->next;
     }
-    return element;
-}
 
-//É¾³ý²Ù×÷£¬É¾³ýÓë´«ÈëÎÀÐÇÊý¾ÝÏàµÈµÄÁ´±íÔªËØ
-void list_delete(List * list, void * data) {
-    ListElement * element;
-    ListElement * prev = NULL;
+    //ä¼ å‡ºæ•°æ®æˆå‘˜
+    *data = element->data;
+    free(element);
+    list->size --;
 
-    for_each(element, list) {
-        if(list->compare(element->data, data)) {
-            //Èç¹ûÇ°Ò»¸öÔªËØÎª¿Õ
-            if(prev == NULL)
-                //Îª¿Õ±íÃ÷´ËÔªËØÎªÁ´±íÍ·£¬ÐÞ¸ÄÁ´±íÍ·
-                list->head = element->next;
-            else
-                //´ÓÁ´±íÖÐ²ð³ý
-                prev->next = element->next;
-
-            //ÅÐ¶Ï´ËÔªËØÊÇ·ñÎªÁ´±íÎ²£¬ÐÞ¸ÄÁ´±íÎ²ÎªÇ°Ò»¸öÁ´±íÔªËØ
-            if(list_is_tail(element))
-                list->tail = prev;
-            //Á´±í¼õ1
-            list->length--;
-            free(element);
-            return;
-        }
-        prev = element;
-    }
+    return 0;
 }

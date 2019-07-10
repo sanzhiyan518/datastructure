@@ -1,242 +1,205 @@
-.global _list_init_asm, _list_destroy_asm, _list_insert_asm, _list_search_asm, _list_delete_asm
+.global _list_init_asm, _list_destroy_asm, _list_ins_next_asm, _list_rem_next_asm
 
-list_size:
-    .int 16
-list_element_size:
+LIST_SIZE:
+    .int 20
+
+LIST_ELEMENT_SIZE:
     .int 8
 
-#Á´±í¹¹½¨
+#é“¾è¡¨æ„å»º
 _list_init_asm:
-    sub $4, %esp
-    #·ÖÅäÁ´±í½á¹¹ÌåÄÚ´æ
-    movl list_size, %eax
-    movl %eax, (%esp)
-    call _malloc
-
-    #ÉèÖÃ½á¹¹Ìå³ÉÔ±
-    #³¤¶È
-    movl $0, (%eax)
-    #Í·¡¢Î²
-    movl $0, 4(%eax)
-    movl $0, 8(%eax)
-    movl 8(%esp), %ebx
-    movl %ebx, 12(%eax)
-
-    add $4, %esp
+    #é“¾è¡¨ç»“æ„ä½“ç›´æ¥èµ‹ç»™ebx
+    movl 4(%esp), %ebx
+    #è®¾ç½®ç»“æ„ä½“æˆå‘˜
+    #é•¿åº¦
+    movl $0, (%ebx)
+    #æ¯”è¾ƒå‡½æ•°
+    movl $0, 4(%ebx)
+    #å…ƒç´ é”€æ¯å‡½æ•°
+    movl 8(%esp), %eax
+    movl %eax, 8(%ebx)
+    #å¤´ã€å°¾
+    movl $0, 12(%ebx)
+    movl $0, 16(%ebx)
     ret
 
-#Á´±íÏú»Ù
+#é“¾è¡¨é”€æ¯
 _list_destroy_asm:
-    #±£´æ¼Ä´æÆ÷
-    sub $4, %esp
+    #å¼€æ ˆ
+    pushl %ebp
+    movl %esp, %ebp
+    subl $8, %esp
 
-    #±éÀúÁ´±íµÄÔªËØÊ¹ÓÃ%ebx
-    movl 8(%esp), %ebx
-    #movl %ebp, %ebx
-    movl 4(%ebx), %ebx
+    #å–å‡ºé“¾è¡¨å‚æ•°
+    movl 8(%ebp), %ebx
+    #éå†é“¾è¡¨çš„å…ƒç´ å­˜æ”¾åœ¨esp(ebp-8),èµ·å§‹å€¼ä¸ºé“¾è¡¨å¤´
+    movl 12(%ebx), %eax
+    movl %eax, (%esp)
+    #å…ƒç´ é‡Šæ”¾å‡½æ•°å­˜å‚¨åœ¨esp+4(ebp-4)
+    movl 8(%ebx), %eax
+    movl %eax, 4(%esp)
 
+    #å¾ªç¯éå†é“¾è¡¨
     jmp 1f
 
 2:
-    #ÁÙÊ±±äÁ¿
-    movl %ebx, %ecx
-    #ĞŞ¸ÄÔªËØÖ¸ÏòÏÂÒ»¸öÔªËØ
-    movl 4(%ebx), %ebx
-    #ÊÍ·ÅÄÚ´æ
-    movl %ecx, (%esp)
+    #å–å‡ºéå†å…ƒç´ 
+    movl  (%esp), %eax
+    #å°†å…ƒç´ å‹æ ˆä¾›é‡Šæ”¾å‡½æ•°è°ƒç”¨
+    pushl %eax
+    #ä¿®æ”¹å…ƒç´ æŒ‡å‘ä¸‹ä¸€ä¸ªå…ƒç´ 
+    movl 4(%eax), %ebx
+    movl %ebx, 4(%esp)
+    #æ­¤æ—¶eaxå­˜æ”¾ç€å½“å‰éå†çš„å…ƒç´ 
+    #åˆ¤æ–­å…ƒç´ é‡Šæ”¾å‡½æ•°æ˜¯å¦ä¸ºç©º
+    cmpl $0, 8(%esp)
+    je 3f
+    #é‡Šæ”¾å…ƒç´ æ•°æ®æˆå‘˜
+    pushl (%eax)
+    call * -4(%ebp)
+    addl $4, %esp
+
+3:
+    #é‡Šæ”¾å…ƒç´ 
     call _free
+    addl $4, %esp
 
 1:
-    cmpl $0, %ebx
-    jnz 2b
+    #åˆ¤æ–­éå†é“¾è¡¨æ˜¯å¦å®Œæˆ
+    cmpl $0, (%esp)
+    jne 2b
 
-    #ÊÍ·ÅÁ´±íÕ¼ÓÃÄÚ´æ
-    movl 8(%esp), %eax
-    movl %eax, (%esp)
-    call _free
-
-    addl $4, %esp
+    #é“¾è¡¨å†…å­˜æ¸…é›¶
+    pushl LIST_SIZE
+    pushl $0
+    pushl 8(%ebp)
+    call _memset
+    leave
     ret
 
-#²åÈë²Ù×÷£¬¹¹½¨ĞÂµÄÁ´±íÔªËØ£¬²¢½«´ËÁ´±íÔªËØ²åÈëµ½´«ÈëÁ´±íÔªËØ²ÎÊıÖ®ºó£¬¿ÉÒÔÎª¿Õ
-_list_insert_asm:
-    subl $4, %esp
-    #ÅĞ¶Ï´«ÈëÁ´±íÊÇ·ñÎª¿Õ
-    cmpl $0, 8(%esp)
-    jz 1f
-
-    #ÎªĞÂµÄÁ´±íÔªËØ·ÖÅäÄÚ´æ
-    movl $8, (%esp)
+#æ’å…¥æ“ä½œ
+_list_ins_next_asm:
+    #æ–°é“¾è¡¨å…ƒç´ åˆ†é…å†…å­˜ï¼Œåˆ†é…å®Œæˆååœ¨eaxå¯„å­˜å™¨
+    pushl LIST_ELEMENT_SIZE
     call _malloc
-    movl 16(%esp), %ecx
-    movl %ecx, (%eax)
+    addl $4, %esp
 
-    #Á´±íÖ¸ÕëÊ¹ÓÃebx¼Ä´æÆ÷
-    movl 8(%esp), %ebx
-    #´«ÈëÁ´±íÔªËØÊ¹ÓÃ%ecx¼Ä´æÆ÷
+    #å†…å­˜åˆ†é…å¤±è´¥è¿”å›-1
+    cmpl $0, %eax
+    jne 1f
+    movl -1, %eax
+    ret
+
+1:
+    #é“¾è¡¨å…ƒç´ åˆå§‹åŒ–
+    #æ•°æ®æˆå‘˜
     movl 12(%esp), %ecx
+    movl %ecx, (%eax)
+    #é“¾æ¥å…ƒç´ ä¸ºç©º
+    movl $0, 4(%eax)
 
-    #ÅĞ¶ÏÊÇ·ñ´«ÈëÁ´±íÔªËØ
-    cmpl $0, %ecx
-    jnz 2f
-    #Î´´«ÈëÁ´±íÔªËØ£¬Ôò½«ĞÂÁ´±íÔªËØ×öÎªÁ´±íÍ·
-    #ÅĞ¶ÏÁ´±íÊÇ·ñ¿Õ£¬¿ÕÔòĞÂÔªËØÒ²ÊÇÁ´±íÎ²
+    #ä½¿ç”¨ebxå¯„å­˜å™¨å­˜å‚¨é“¾è¡¨å‚æ•°
+    movl 4(%esp), %ebx
+    #ä½¿ç”¨ecxå¯„å­˜å™¨å­˜å‚¨å‰å‘é“¾è¡¨å‚æ•°
+    movl 8(%esp), %ecx
+
+    #åˆ¤æ–­æ˜¯å¦ä¼ å…¥å‰å‘é“¾è¡¨å…ƒç´ 
+    cmpl $0,  %ecx
+    jne 2f
+    #æœªä¼ å…¥å‰å‘é“¾è¡¨å…ƒç´ ï¼Œåˆ™å°†æ–°é“¾è¡¨å…ƒç´ åšä¸ºé“¾è¡¨å¤´
+    #åˆ¤æ–­é“¾è¡¨æ˜¯å¦ç©ºï¼Œç©ºåˆ™æ–°å…ƒç´ ä¹Ÿæ˜¯é“¾è¡¨å°¾
     cmpl $0, (%ebx)
     jnz 3f
-    movl %eax, 8(%ebx)
+    #æ–°å…ƒç´ ä¸ºé“¾è¡¨å°¾
+    movl %eax, 16(%ebx)
 3:
-    movl 4(%ebx), %edx
+    #æ–°å…ƒç´ ä¸ºé“¾è¡¨å¤´
+    movl 12(%ebx), %edx
     movl %edx, 4(%eax)
-    movl %eax, 4(%ebx)
-    jmp 5f
+    movl %eax, 12(%ebx)
+    jmp 4f
 
 2:
-    #´«ÈëÁËÁ´±íÔªËØ
-    #´«ÈëÁ´±íÔªËØÊÇ·ñÎªÎ²
-    cmpl 8(%ebx), %ecx
-    jne 4f
-    movl %eax, 8(%ebx)
-4:
+    #ä¼ å…¥äº†å‰å‘é“¾è¡¨å…ƒç´ 
+    #å‰å‘é“¾è¡¨å…ƒç´ æ˜¯å¦ä¸ºå°¾ï¼Œæ˜¯åˆ™æ–°å…ƒç´ ä¸ºé“¾è¡¨å°¾
+    cmpl 16(%ebx), %ecx
+    jne 5f
+    #æ–°å…ƒç´ ä¸ºé“¾è¡¨å°¾
+    movl %eax, 16(%ebx)
+5:
+    #æ–°å…ƒç´ ä¸å‰å‘å…ƒç´ é“¾æ¥
     movl 4(%ecx), %edx
     movl %edx, 4(%eax)
     movl %eax, 4(%ecx)
 
-5:
+4:
+    #é“¾è¡¨å…ƒç´ ä¸ªæ•°å¢åŠ 
     incl (%ebx)
-1:
-    addl $4, %esp
+    #è¿”å›é›¶
+    xorl %eax, %eax
     ret
 
-#¸ù¾İ´«ÈëÎÀĞÇÊı¾İ£¬ËÑË÷Á´±íÔªËØ
-_list_search_asm:
-    #ÅĞ¶ÏÁ´±íÊÇ·ñÎª¿Õ
-    subl $16, %esp
-
-    movl 20(%esp), %eax
-    cmpl $0, %eax
-    jz 1f
-
-    #ÔªËØ±È½Ïº¯ÊıÊ¹ÓÃesp+8
-    movl 12(%eax), %edx
-    movl %edx, 8(%esp)
-    #Á´±íËÑË÷ÔªËØÊ¹ÓÃesp+12
-    movl 4(%eax), %edx
-    movl %edx, 12(%esp)
-    #´«ÈëÎÀĞÇÊı¾İÖ±½ÓÑ¹Õ»
-    movl 24(%esp), %eax
-    movl %eax, (%esp)
-    jmp 2f
-
-3:
-    #±È½ÏÔªËØ
-    movl 12(%esp), %eax
-    movl (%eax), %eax
-    movl %eax, 4(%esp)
-    movl 8(%esp), %edx
-    call *%edx
-    cmpl $0, %eax
-    #²»ÏàµÈ¼ÌĞø
-    je 4f
-    #ÏàµÈÉèÖÃ·µ»ØÖµÍË³ö
-    movl 12(%esp), %eax
-    jmp 1f
-4:
-    movl 12(%esp), %eax
-    movl 4(%eax), %eax
-    movl %eax, 12(%esp)
-
-2:
-    cmpl $0, 12(%esp)
-    jne 3b
-
-1:
-    addl $16, %esp
+#åˆ é™¤æ“ä½œ
+_list_rem_next_asm:
+    #è¿”å›å€¼è®¾ç½®-1
+    movl $-1, %eax
+    #ä½¿ç”¨ebxå­˜å‚¨é“¾è¡¨
+    movl 4(%esp), %ebx
+    #åˆ¤æ–­é“¾è¡¨æ˜¯å¦å«æœ‰å…ƒç´ ï¼Œæ²¡æœ‰è¿”å›-1
+    cmpl $0, (%ebx)
+    jne 1f
     ret
 
-_list_delete_asm:
-    pushl %ebp
-    movl %esp, %ebp
-    subl $24, %esp
+1:
+    #å‰å‘å…ƒç´ ä½¿ç”¨ecx
+    movl 8(%esp), %ecx
 
-    #ÅĞ¶ÏÁ´±íÊÇ·ñÎª¿Õ
-    movl 8(%ebp), %eax
-    cmpl $0, %eax
-    je 1f
-
-    #ÔªËØ±È½Ïº¯ÊıÊ¹ÓÃ%esp+8
-    movl 12(%eax), %edx
-    movl %edx, 8(%esp)
-    #±éÀúÔªËØÊ¹ÓÃesp + 12
-    movl 4(%eax), %edx
-    movl %edx, 12(%esp)
-    #Ç°ÇıÔªËØÊ¹ÓÃesp + 16
-    xorl %edx, %edx
-    movl %edx, 16(%esp)
-    #½«´ıÉ¾³ıÔªËØÑ¹Õ»
-    movl 12(%ebp), %eax
-    movl %eax, (%esp)
-    jmp 2f
-
-3:
-    #È¡³ö±éÀúÔªËØÎÀĞÇÊı¾İµ÷ÓÃ±È½Ïº¯Êı
-    movl 12(%esp), %eax
-    movl (%eax), %eax
-    movl %eax, 4(%esp)
-    movl 8(%esp), %edx
-    call *%edx
-    #²»ÏàÍ¬ÏÂÒ»¸öÔªËØ
-    cmpl $1, %eax
-    jne 4f
-    #ÏàÍ¬¿ªÊ¼É¾³ıÔªËØ,µÃµ½´ËÔªËØµÄºó¼ÌÔªËØ
-    movl 12(%esp), %eax
-    movl 4(%eax), %edx
-
-    #Á´±í
-    movl 8(%ebp), %ebx
-    #Ç°ÇıÔªËØ
-    movl 16(%esp), %ecx
-
-    #¸ù¾İÇ°ÇıÔªËØÊÇ·ñÎª¿Õ´¦Àí
+    #åˆ¤æ–­å‰å‘å…ƒç´ æ˜¯å¦ä¸ºç©º
     cmpl $0, %ecx
+    je 2f
+    #å‰å‘å…ƒç´ ä¸ä¸ºç©º
+    #å–å‡ºå‰å‘é“¾æ¥å…ƒç´ åšä¸ºåˆ é™¤å…ƒç´ ï¼Œä½¿ç”¨edxå­˜å‚¨
+    movl 4(%ecx), %edx
+    #åˆ¤æ–­åˆ é™¤å…ƒç´ æ˜¯å¦ä¸ºç©ºï¼Œä¸ºç©ºè¿”å›
+    cmpl $0, %edx
     jne 5f
-
-    #Ã»ÓĞÇ°ÇıÔªËØ±íÃ÷´ËÔªËØÎªÍ·ĞŞ¸ÄÁ´±íÍ·
-    movl %edx, 4(%ebx)
-    jmp 6f
-
+    ret
 5:
-    #ÓĞÇ°ÇıÔªËØ,ĞŞ¸ÄÇ°ÇıµÄÏÂÒ»¸öÔªËØ
-    movl %edx, 4(%ecx)
-
-6:
-    #¼ì²éÔªËØÊÇ·ñÎ²£¬ÎªÎ²ĞŞ¸ÄÎ²
-    cmpl 8(%ebx), %eax
-    jne 7f
-    #ĞŞ¸ÄÁ´±íÎ²ÎªÇ°ÇıÔªËØ
-    movl %ecx, 8(%ebx)
-
-7:
-    #ÊÍ·ÅÔªËØ
-    movl %eax, (%esp)
-    call _free
-    #Á´±íÊı¾İ¼õ1
-    decl (%ebx)
-    jmp 1f
-
-4:
-    #²»ÏàÍ¬
-    movl 12(%esp), %eax
-    #ĞŞ¸ÄÇ°ÇıÔªËØ
-    movl %eax, 16(%esp)
-    #ÏÂÒ»¸öÔªËØ
-    movl 4(%eax), %eax
-    movl %eax, 12(%esp)
+    #åˆ¤æ–­åˆ é™¤å…ƒç´ æ˜¯å¦ä¸ºé“¾è¡¨å°¾ï¼Œæ˜¯åˆ™é“¾è¡¨å°¾ä¿®æ”¹ä¸ºå‰å‘å…ƒç´ 
+    cmpl %edx, 16(%ebx)
+    jne 3f
+    #ä¿®æ”¹é“¾è¡¨å°¾
+    movl %ecx, 16(%ebx)
+3:
+    #ä¿®æ”¹å…ƒç´ é—´é“¾æ¥å…³ç³»
+    movl 4(%edx), %eax
+    movl %eax, 4(%ecx)
+    jmp 4f
 
 2:
-    cmpl $0, 12(%esp)
-    jne 3b
+    #æœªä¼ å…¥å‰å‘å…ƒç´ ï¼Œåˆ™åˆ é™¤é“¾è¡¨å¤´å…ƒç´ 
+    movl 12(%ebx), %edx
+    #åˆ¤æ–­é“¾è¡¨æ˜¯å¦åªæœ‰ä¸€ä¸ªå…ƒç´ ï¼Œæ˜¯åˆ™é“¾è¡¨å°¾ä¿®æ”¹ä¸ºç©º
+    cmpl %edx, 16(%ebx)
+    jne 5f
+    #ä¿®æ”¹é“¾è¡¨å°¾
+    movl $0, 16(%ebx)
+5:
+    #ä¿®æ”¹é“¾è¡¨å¤´
+    movl 4(%edx), %eax
+    movl %eax, 12(%ebx)
 
-1:
-    addl $24, %esp
-    leave
+4:
+    #edxå­˜å‚¨åˆ é™¤å…ƒç´ ï¼Œé‡Šæ”¾åˆ é™¤å…ƒç´ å†…å­˜
+    #å°†åˆ é™¤å…ƒç´ æ•°æ®æˆå‘˜ä¼ å‡º
+    movl 12(%esp), %eax
+    movl (%edx), %ecx
+    movl %ecx, (%eax)
+    #é“¾è¡¨å…ƒç´ ä¸ªæ•°å‡1
+    decl (%ebx)
+    #é‡Šæ”¾åˆ é™¤å…ƒç´ å†…å­˜
+    pushl %edx
+    call _free
+    popl %edx
+    xorl %eax, %eax
     ret
