@@ -1,4 +1,4 @@
-.global _list_init_asm, _list_destroy_asm, _list_ins_next_asm, _list_rem_next_asm
+.global list_init_asm, list_destroy_asm, list_ins_next_asm, list_rem_next_asm
 
 LIST_SIZE:
     .int 20
@@ -7,7 +7,7 @@ LIST_ELEMENT_SIZE:
     .int 8
 
 #链表构建
-_list_init_asm:
+list_init_asm:
     #链表结构体直接赋给ebx
     movl 4(%esp), %ebx
     #设置结构体成员
@@ -24,7 +24,7 @@ _list_init_asm:
     ret
 
 #链表销毁
-_list_destroy_asm:
+list_destroy_asm:
     #开栈
     pushl %ebp
     movl %esp, %ebp
@@ -61,7 +61,7 @@ _list_destroy_asm:
 
 3:
     #释放元素
-    call _free
+    call free
     addl $4, %esp
 
 1:
@@ -73,15 +73,15 @@ _list_destroy_asm:
     pushl LIST_SIZE
     pushl $0
     pushl 8(%ebp)
-    call _memset
+    call memset
     leave
     ret
 
 #插入操作
-_list_ins_next_asm:
+list_ins_next_asm:
     #新链表元素分配内存，分配完成后在eax寄存器
     pushl LIST_ELEMENT_SIZE
-    call _malloc
+    call malloc
     addl $4, %esp
 
     #内存分配失败返回-1
@@ -140,7 +140,7 @@ _list_ins_next_asm:
     ret
 
 #删除操作
-_list_rem_next_asm:
+list_rem_next_asm:
     #返回值设置-1
     movl $-1, %eax
     #使用ebx存储链表
@@ -199,7 +199,7 @@ _list_rem_next_asm:
     decl (%ebx)
     #释放删除元素内存
     pushl %edx
-    call _free
+    call free
     popl %edx
     xorl %eax, %eax
     ret
