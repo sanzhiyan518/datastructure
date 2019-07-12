@@ -1,123 +1,160 @@
 #include <stdio.h>
 #include <time.h>
+#include <stdlib.h>
+
 #include "dlist.h"
-static inline int compare_int(const void * a, const void * b) {
-    //printf("key1=%d,key2=%d\n", *(int*)a, *(int *)b);
-    return (*(int *)a == *(int *)b) ? 1 : 0;
+
+static int match_int(const void * data1, const void * data2) {
+    return (*(int *)data1 == *(int *)data2) ? 1 : 0;
 }
+/*
+static void dlist_int_print(DList * list) {
+    DListElement * element = dlist_head(list);
 
-void test1() {
-    int j = 0;
-    for(j = 0; j < 100000; j++) {
-        int arr[6] = {1,2,3,4,5,6};
-        int i = 1;
-        DList * l;
-        DListElement * e;
-
-        l = dlist_init(compare_int);
-
-        dlist_insert(l, NULL, (void *)arr);
-        dlist_print(l);
-        dlist_delete(l, (void *)arr);
-
-        dlist_insert(l, NULL, (void *)(arr + 2));
-        dlist_insert(l, NULL, (void *)arr);
-        dlist_print(l);
-        e = dlist_search(l, &i);
-        dlist_insert(l, e, (void *)(arr + 1));
-        dlist_print(l);
-
-        dlist_append(l, (void *)(arr + 4));
-        dlist_print(l);
-        i = 3;
-        e = dlist_search(l, &i);
-        dlist_insert(l, e, (void *)(arr + 3));
-        dlist_append(l, (void *)(arr + 5));
-        dlist_print(l);
-
-        i = 1;
-        dlist_delete(l, &i);
-        dlist_print(l);
-        i = 6;
-        dlist_delete(l, &i);
-        dlist_print(l);
-        i = 3;
-        dlist_delete(l, &i);
-        dlist_print(l);
-        i = 5;
-        dlist_delete(l, &i);
-        dlist_print(l);
-        i = 4;
-        dlist_delete(l, &i);
-        dlist_print(l);
-        dlist_print(l);
-
-        dlist_destroy(l);
+    while(element != NULL) {
+        printf("--%d--", *(int *)(dlist_data(element)));
+        element = dlist_next(element);
     }
+    printf("\n");
 }
+*/
+static DListElement * dlist_search(DList * list, void * data) {
+    DListElement * element = dlist_head(list);
+    match match = list->match;
 
-void test2() {
-    int j = 0;
-    for(j = 0; j < 100000; j++) {
-        int arr[6] = {1,2,3,4,5,6};
-        int i = 1;
-        DList * l;
-        DListElement * e;
+    if(match == NULL)
+        return NULL;
 
-        l = dlist_init_asm(compare_int);
-
-        dlist_insert_asm(l, NULL, (void *)arr);
-        dlist_print(l);
-        dlist_delete_asm(l, (void *)arr);
-
-        dlist_insert_asm(l, NULL, (void *)(arr + 2));
-        dlist_insert_asm(l, NULL, (void *)arr);
-        dlist_print(l);
-        e = dlist_search_asm(l, &i);
-        dlist_insert_asm(l, e, (void *)(arr + 1));
-        dlist_print(l);
-
-        dlist_append(l, (void *)(arr + 4));
-        dlist_print(l);
-        i = 3;
-        e = dlist_search_asm(l, &i);
-        dlist_insert_asm(l, e, (void *)(arr + 3));
-        dlist_append(l, (void *)(arr + 5));
-        dlist_print(l);
-
-        i = 1;
-        dlist_delete_asm(l, &i);
-        dlist_print(l);
-        i = 6;
-        dlist_delete_asm(l, &i);
-        dlist_print(l);
-        i = 3;
-        dlist_delete_asm(l, &i);
-        dlist_print(l);
-        i = 5;
-        dlist_delete_asm(l, &i);
-        dlist_print(l);
-        i = 4;
-        dlist_delete_asm(l, &i);
-        dlist_print(l);
-        dlist_print(l);
-
-        dlist_destroy_asm(l);
+    while(element != NULL) {
+        if(match(data, dlist_data(element)))
+            return element;
+        element = dlist_next(element);
     }
+
+    return NULL;
 }
-int main() {
-    time_t start,stop;
+
+void test_int() {
+    int ** array = (int **)malloc(sizeof(int*) * 8);
     int i = 0;
-    for(; i < 10; i++) {
-    start = time(NULL);
-    test1();
-    stop = time(NULL);
-    printf("c---Use Time:%ld\n",(stop-start));
+    DList * list = (DList *)malloc(sizeof(DList));
+    DListElement * element;
+    int * pi;
 
-    start = time(NULL);
-    test2();
-    stop = time(NULL);
-    printf("a----Use Time:%ld\n",(stop-start));
+    for(i = 0; i < 8; i++) {
+        pi = (int *)malloc(sizeof(int));
+        *pi = i;
+        array[i] = pi;
     }
+
+    dlist_init(list, free);
+    list->match = match_int;
+
+    dlist_ins_prev(list, NULL, array[0]); //[0]
+    dlist_ins_prev(list, dlist_head(list), array[1]); //[1,0]
+    dlist_ins_next(list, dlist_head(list), array[2]); //[1,2,0]
+    dlist_ins_prev(list, NULL, array[3]); //[1,2,0]
+    dlist_ins_next(list, dlist_tail(list), array[3]);  //[1,2,0,3]
+    dlist_ins_prev(list, dlist_tail(list), array[4]); //[1,2,0,4,3]
+    //dlist_int_print(list);
+
+    element = dlist_search(list, array[0]);
+    dlist_ins_prev(list, element, array[5]); //[1,2,5,0,4,3]
+    dlist_ins_next(list, element, array[6]); //[1,2,5,0,6,4,3]
+    //dlist_int_print(list);
+
+    element = dlist_head(list);
+    if(dlist_remove(list, element, (void **)&pi) == 0)  //[2,5,0,6,4,3]
+        free(pi);
+
+    //dlist_int_print(list);
+    element = dlist_tail(list);
+    if(dlist_remove(list, element, (void **)&pi) == 0)  //[2,5,0,6,4]
+        free(pi);
+
+    //dlist_int_print(list);
+    element = dlist_search(list, array[0]);
+    if(dlist_remove(list, element, (void **)&pi) == 0) //[2,5,6,4]
+        free(pi);
+
+    //dlist_int_print(list);
+    while(dlist_size(list) > 2)
+        if(dlist_remove(list, dlist_tail(list), (void **)&pi) == 0)
+            free(pi);
+
+    dlist_destroy(list);
+    free(array);
+}
+
+void test_int1() {
+    int ** array = (int **)malloc(sizeof(int*) * 8);
+    int i = 0;
+    DList * list = (DList *)malloc(sizeof(DList));
+    DListElement * element;
+    int * pi;
+
+    for(i = 0; i < 8; i++) {
+        pi = (int *)malloc(sizeof(int));
+        *pi = i;
+        array[i] = pi;
+    }
+
+    dlist_init_asm(list, free);
+    list->match = match_int;
+
+    dlist_ins_prev_asm(list, NULL, array[0]); //[0]
+    dlist_ins_prev_asm(list, dlist_head(list), array[1]); //[1,0]
+    dlist_ins_next_asm(list, dlist_head(list), array[2]); //[1,2,0]
+    dlist_ins_prev_asm(list, NULL, array[3]); //[1,2,0]
+    dlist_ins_next_asm(list, dlist_tail(list), array[3]);  //[1,2,0,3]
+    dlist_ins_prev_asm(list, dlist_tail(list), array[4]); //[1,2,0,4,3]
+    //dlist_int_print(list);
+
+    element = dlist_search(list, array[0]);
+    dlist_ins_prev_asm(list, element, array[5]); //[1,2,5,0,4,3]
+    dlist_ins_next_asm(list, element, array[6]); //[1,2,5,0,6,4,3]
+    //dlist_int_print(list);
+
+    element = dlist_head(list);
+    if(dlist_remove_asm(list, element, (void **)&pi) == 0)  //[2,5,0,6,4,3]
+        free(pi);
+
+    //dlist_int_print(list);
+    element = dlist_tail(list);
+    if(dlist_remove_asm(list, element, (void **)&pi) == 0)  //[2,5,0,6,4]
+        free(pi);
+
+    //dlist_int_print(list);
+    element = dlist_search(list, array[0]);
+    if(dlist_remove_asm(list, element, (void **)&pi) == 0) //[2,5,6,4]
+        free(pi);
+
+    //dlist_int_print(list);
+    while(dlist_size(list) > 2)
+        if(dlist_remove_asm(list, dlist_tail(list), (void **)&pi) == 0)
+            free(pi);
+
+    dlist_destroy_asm(list);
+    free(array);
+}
+
+int main() {
+    int i, j;
+
+    time_t start,stop;
+    for(j = 0; j < 10; j++) {
+        start = time(NULL);
+        for(i = 0; i < 100000000; i++)
+            test_int();
+        stop = time(NULL);
+        printf("c Use Time:%ld\n",(stop-start));
+
+        start = time(NULL);
+        for(i = 0; i < 100000000; i++)
+            test_int1();
+        stop = time(NULL);
+        printf("asm Use Time:%ld\n",(stop-start));
+    }
+
     return 0;
 }

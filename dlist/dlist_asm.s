@@ -1,261 +1,277 @@
-.global _dlist_init_asm, _dlist_destroy_asm, _dlist_insert_asm, _dlist_search_asm, _dlist_delete_asm
+.global dlist_init_asm, dlist_destroy_asm, dlist_ins_next_asm, dlist_ins_prev_asm, dlist_remove_asm
 
-dlist_size:
-    .int 16
-dlist_element_size:
-    .int 12
-
-#链表构建
-_dlist_init_asm:
-    subl $4, %esp
-
-    #分配内存
-    movl dlist_size, %eax
-    movl %eax, (%esp)
-    call _malloc
-    #eax为返回值
-    movl $0, (%eax)
-    movl $0, 4(%eax)
-    movl $0, 8(%eax)
-    movl 8(%esp), %edx
-    movl %edx, 12(%eax)
-
-    addl $4, %esp
-
+#链表初始化
+dlist_init_asm:
+    #链表参数rdi传入
+    #设置长度
+    movq $0, (%rdi)
+    #设置比较函数
+    movq $0, 8(%rdi)
+    #设置数据成员销毁函数,函数指针由rsi传入
+    movq %rsi, 16(%rdi)
+    #设置链表头、尾
+    movq $0, 24(%rdi)
+    movq $0, 32(%rdi)
     ret
 
+
 #链表销毁
-_dlist_destroy_asm:
-    push %ebp
-    movl %esp, %ebp
-    subl $16, %esp
+dlist_destroy_asm:
+    #开栈
+    push %rbp
+    movq %rsp, %rbp
+    subq $24, %rsp
 
-    #遍历元素使用esp + 4
-    movl 8(%ebp), %eax
-    cmpl $0, %eax
-    je 1f
+    #链表参数由rdi传入,将其存入rsp+16,以备后用
+    movq %rdi, 16(%rsp)
+    #取出链表头为遍历元素使用rsp
+    movq 24(%rdi), %rax
+    movq %rax, (%rsp)
+    #元素销毁函数使用rsp+8
+    movq 16(%rdi), %rax
+    movq %rax, 8(%rsp)
 
-    movl 4(%eax), %eax
-    movl %eax, 4(%esp)
-    jmp 2f
-
-3:
-    #临时变量用edx
-    movl 4(%esp), %edx
-    #循环改为后继元素
-    movl 8(%edx), %eax
-    movl %eax, 4(%esp)
-    #释放元素所占内存
-    movl %edx, (%esp)
-    call _free
+    #循环遍历链表
+    jmp 1f
 
 2:
-    cmpl $0, 4(%esp)
-    jne 3b
+   #取出遍历元素
+   movq (%rsp), %rdx
+   #判断元素销毁函数是否为空
+   cmpq $0, 8(%rsp)
+   je 3f
+   #不为空,调用元素销毁函数
+   movq 8(%rsp), %rax
+   movq (%rdx), %rdi
+   call *%rax
+3:
+    #释放元素内存
+    movq (%rsp), %rdi
+    call free
+    #将遍历元素修改为后继元素
+    movq (%rsp), %rax
+    movq 16(%rax), %rax
+    movq %rax, (%rsp)
 
-    mov 8(%ebp), %eax
-    movl %eax, (%esp)
-    call _free
+ 1:
+    #判断遍历链表结束
+    cmpq $0, (%rsp)
+    jne 2b
 
-1:
+    #链表清零
+    #链表参数为第1个参数
+    movq 16(%rsp), %rdi
+    #0为第2个参数
+    movl $0, %esi
+    #链表结构体为第3个参数
+    movl $40, %edx
+    call memset
     leave
     ret
 
-#链表插入元素
-_dlist_insert_asm:
-    #
-    subl $4, %esp
-    #判断传入链表是否为空
-    cmpl $0, 8(%esp)
+#链表元素后插入新元素
+dlist_ins_next_asm:
+    #链表参数存于rdi
+    #前驱元素存于rsi
+    #数据成员存于rdx
+
+    #判断前驱元素是否空
+    cmpq $0, %rsi
+    jne 1f
+    #判断链表长度是否为零，前驱为空且链表长度不空则返回-1
+    cmpq $0, (%rdi)
     je 1f
+    movq $-1, %rax
+    ret
 
-    #新建元素分配内存
-    movl dlist_element_size, %eax
-    movl %eax, (%esp)
-    call _malloc
-    #新建元素使用eax寄存器,设置初始值
-    movl 16(%esp), %edx
-    movl %edx, (%eax)
-    movl $0, 4(%eax)
-    movl $0, 8(%eax)
+1:
+    #将参数入栈，调用其它函数后可能传入参数的寄存器会发生变化
+    pushq %rdx
+    pushq %rsi
+    pushq %rdi
 
-    #前驱元素使用ecx寄存器
-    movl 12(%esp), %ecx
-    #链表使用ebx寄存器
-    movl 8(%esp), %ebx
+    #为新元素分配内存,返回在rax
+    movq $24, %rdi
+    call malloc
 
-    #根据是否传入前驱元素进行处理
-    cmpl $0, %ecx
-    je 2f
+    #参数出线
+    popq %rdi
+    popq %rsi
+    popq %rdx
 
-    #前驱元素不为空
-    #判断前驱元素是否为尾，为尾则修改链尾为新元素
-    cmpl %ecx, 8(%ebx)
-    je 3f
+    #判断内存分配是否成功
+    cmpq $0, %rax
+    jne 2f
+    movq $-1, %rax
+    ret
 
-    #不为尾，修改元素间链接关系
-    #原前驱的后继的前驱改为新元素
-    movl 8(%ecx), %edx
-    movl %eax, 4(%edx)
+2:
+    #设置数据成员
+    movq %rdx, (%rax)
+
+    cmpq $0, %rsi
+    jne 3f
+    #如果前驱元素为空（链表长度为零），新元素为链表的头、尾
+    movq $0, 8(%rax)
+    movq $0, 16(%rax)
+    movq %rax, 24(%rdi)
+    movq %rax, 32(%rdi)
     jmp 4f
 
 3:
-    #前驱为尾修改链表尾为新元素
-    movl %eax, 8(%ebx)
+    #己传入前驱元素，则与前驱链接
+    movq 16(%rsi), %rcx
+    movq %rcx, 16(%rax)
+    movq %rsi, 8(%rax)
 
-4:
-    #加入链
-    #前驱的后继改为新元素的后继
-    movl 8(%ecx), %edx
-    movl %edx, 8(%eax)
-    #新元素的前驱修改
-    movl %ecx, 4(%eax)
-    #前驱的后继改为新元素
-    movl %eax, 8(%ecx)
-    jmp 5f
-
-2:
-    #传入前驱元素为空
-    #判断链表长度是否为空，为空则设置新元素为尾
-    cmpl $0, (%ebx)
-    jne 6f
-    #链表为空
-    movl %eax, 8(%ebx)
-6:
-    #新元素为链表头
-    #新元素的后继为旧头
-    movl 4(%ebx), %edx
-    movl %edx, 8(%eax)
-
-    #判断旧头是否为空
-    cmpl $0, %edx
-    je 7f
-    #不为空则旧头前驱为新元素
-    movl %eax, 4(%edx)
-7:
-    #改链表头为新元素
-    movl %eax, 4(%ebx)
-
-5:
-    #增加链表长度
-    incl (%ebx)
-
-1:
-    addl $4, %esp
-    ret
-
-_dlist_search_asm:
-    push %ebp
-    movl %esp, %ebp
-    subl $16, %esp
-
-    #判断链表是否为空
-    cmpl $0, 8(%ebp)
-    jne 2f
-    #为空返回
-    xorl %eax, %eax
-    jmp 1f
-
-2:
-    #遍历元素使用esp + 8
-    movl 8(%ebp), %eax
-    movl 4(%eax), %edx
-    movl %edx, 8(%esp)
-    #比较函数使用esp + 12
-    movl 12(%eax), %edx
-    movl %edx, 12(%esp)
-    #比较卫星数据提前压栈
-    movl 12(%ebp), %eax
-    movl %eax, (%esp)
-
-    jmp 3f
-
-4:
-    #取出卫星数据，压栈调用比较函数
-    movl 8(%esp), %eax
-    movl (%eax), %eax
-    movl %eax, 4(%esp)
-    #
-    movl 12(%esp), %eax
-    call *%eax
-    #
-    cmpl $1, %eax
+    #判断前驱元素是否为链表尾，是则新元素设置为链表尾
+    cmpq  $0,16(%rsi)
     jne 5f
-
-    #相等，设置返回值退出
-    movl 8(%esp), %eax
-    #不相等继续
-    jmp 1f
+    #设置为链表尾
+    movq %rax, 32(%rdi)
+    jmp 6f
 5:
-    #继续搜索
-    movl 8(%esp), %eax
-    movl 8(%eax), %eax
-    movl %eax, 8(%esp)
+    #修改前驱的后继元素的前驱为新元素
+    movq 16(%rsi), %rcx
+    movq %rax, 8(%rcx)
+6:
+    #前驱的后继为新元素
+    movq %rax, 16(%rsi)
 
-3:
-    cmpl $0, 8(%esp)
-    jne 4b
-
-    #未发现设置空
-    xorl %eax, %eax
-
-1:
-    leave
+4:
+    #链表长度增加
+    incq (%rdi)
+    movq $0, %rax
     ret
 
-#删除操作，删除与传入卫星数据相等的链表元素
-_dlist_delete_asm:
-    push %ebp
-    movl %esp, %ebp
-    subl $8, %esp
-    #调用搜索函数
-    movl 8(%ebp), %eax
-    movl %eax, (%esp)
-    movl 12(%ebp), %eax
-    movl %eax, 4(%esp)
-    call _dlist_search_asm
-    #搜索到的链表元素直接使用eax寄存器
-    #比较是否搜到
-    cmpl $0, %eax
-    #未搜到退出
+#链表元素前插入新元素
+dlist_ins_prev_asm:
+    #链表参数存于rdi
+    #后继元素存于rsi
+    #数据成员存于rdx
+
+    #判断后继元素是否空
+    cmpq $0, %rsi
+    jne 1f
+    #判断链表长度是否为零，后继为空且链表长度不空则返回-1
+    cmpq $0, (%rdi)
     je 1f
-
-    #前驱元素使用ecx寄存器
-    movl 4(%eax), %ecx
-    #后继元素使用edx寄存器
-    movl 8(%eax), %edx
-    #链表使用ebx寄存器
-    movl (%esp), %ebx
-
-    #判断前驱是否空
-    cmpl $0, %ecx
-    je 2f
-    #非空设置前驱的后继为后继元素
-    movl %edx, 8(%ecx)
-    jmp 3f
-2:
-    #空则设置链表头
-    movl %edx, 4(%ebx)
-
-3:
-    #判断元素是否为链表尾
-    cmpl %eax, 8(%ebx)
-    je 4f
-
-    #不是链表尾，则设置后继的前驱为前驱
-    movl %ecx, 4(%edx)
-    jmp 5f
-4:
-    #链表尾，则设置链表尾为前驱
-    movl %ecx, 8(%ebx)
-
-5:
-    #链表元素数减1
-    decl (%ebx)
-    #释放元素
-    movl %eax, (%esp)
-    call _free
+    movq $-1, %rax
+    ret
 
 1:
-    leave
+    #将参数入栈，调用其它函数后可能传入参数的寄存器会发生变化
+    pushq %rdx
+    pushq %rsi
+    pushq %rdi
+
+    #为新元素分配内存,返回在rax
+    movq $24, %rdi
+    call malloc
+
+    #参数出线
+    popq %rdi
+    popq %rsi
+    popq %rdx
+
+    #判断内存分配是否成功
+    cmpq $0, %rax
+    jne 2f
+    movq $-1, %rax
+    ret
+
+2:
+    #设置数据成员
+    movq %rdx, (%rax)
+
+    cmpq $0, %rsi
+    jne 3f
+    #如果后继元素为空（链表长度为零），新元素为链表的头、尾
+    movq $0, 8(%rax)
+    movq $0, 16(%rax)
+    movq %rax, 24(%rdi)
+    movq %rax, 32(%rdi)
+    jmp 4f
+
+3:
+    #己传入后继元素，则与后继链接
+    #后断元素的前驱为新元素的前驱
+    movq 8(%rsi), %rcx
+    movq %rcx, 8(%rax)
+    #新元素的后继为传入后继元素
+    movq %rsi, 16(%rax)
+
+    #判断后继元素是否为链表头，是则新元素设置为链表头
+    cmpq  $0, 8(%rsi)
+    jne 5f
+    #设置为链表头
+    movq %rax, 24(%rdi)
+    jmp 6f
+5:
+    #修改后继元素的前驱的后继为新元素
+    movq 8(%rsi), %rcx
+    movq %rax, 16(%rcx)
+6:
+    #后继元素的前驱为新元素
+    movq %rax, 8(%rsi)
+
+4:
+    #链表长度增加
+    incq (%rdi)
+    movq $0, %rax
+    ret
+
+#删除元素
+dlist_remove_asm:
+    #链表参数在rdi
+    #删除元素在rsi
+    #数据传出指针在rdx
+
+    movq $-1, %rax
+    #判断删除元素是否为空
+    cmpq $0, %rsi
+    jne 1f
+    ret
+1:
+    #判断链表长度是否为零
+    cmpq $0, (%rdi)
+    jne 2f
+    ret
+
+2:
+    #取出元素的前驱与后继
+    movq 8(%rsi), %rax
+    movq 16(%rsi), %rcx
+
+    #判断元素是否为链表头（前驱为空）
+    cmpq $0,  %rax
+    jne 3f
+    #修改链表头为元素的后继
+    movq %rcx, 24(%rdi)
+    jmp 4f
+3:
+    #元素不为链表头，则修改元素的前驱的后继为元素的后继元素
+    movq %rcx, 16(%rax)
+
+4:
+    #判断元素是否为链表尾（后继为空）
+    cmpq $0, %rcx
+    jne 5f
+    #修改链表尾为元素的前驱
+    movq %rax, 32(%rdi)
+    jmp 6f
+5:
+    #元素不为链表尾，则修改元素后继的前驱为元素的前驱元素
+    movq %rax, 8(%rcx)
+
+6:
+    #链表长度减1
+    decl (%rdi)
+    #传出数据成员
+    movq (%rsi), %rcx
+    movq %rcx, (%rdx)
+    #释放元素内存
+    movq %rsi, %rdi
+    call free
+    movq $0, %rax
     ret
