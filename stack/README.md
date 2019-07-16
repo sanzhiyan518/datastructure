@@ -19,7 +19,7 @@ typedef void (*destroy)(void * data);
 //栈的单链表结点
 typedef struct Node_ {
     //后继元素
-    struct Node * next;
+    struct Node_ * next;
     //数据成员
     void * data;
 } Node;
